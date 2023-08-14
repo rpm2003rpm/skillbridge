@@ -88,7 +88,7 @@ class TcpChannel(Channel):
         return self.connect(sock)
 
     def create_socket(self) -> socket:
-        return socket(self.address_family, self.socket_kind)
+        return socket(AF_INET, SOCK_STREAM)
 
     def configure(self, _: socket) -> None:
         pass
@@ -210,6 +210,7 @@ else:
             @staticmethod
             def create_address(id_: Any) -> Any:
                 id_ = 'default' if id_ is None else id_
-                return f'/tmp/skill-server-{id_}.sock'
+                #return f'/tmp/skill-server-{id_}.sock'
+                return ('127.0.0.1', 52425)
 
         return UnixChannel
