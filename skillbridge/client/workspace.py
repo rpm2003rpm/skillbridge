@@ -46,6 +46,7 @@ def _register_well_known_functions(ws: 'Workspace') -> None:
 class Workspace:
     _var_counter = 0
 
+    allFunc: FunctionCollection
     abe: FunctionCollection
     abs: FunctionCollection
     adp: FunctionCollection
@@ -134,6 +135,7 @@ class Workspace:
     nmp: FunctionCollection
     nr: FunctionCollection
     ocnxl: FunctionCollection
+    ocn: FunctionCollection
     odc: FunctionCollection
     opc: FunctionCollection
     par: FunctionCollection
@@ -187,7 +189,6 @@ class Workspace:
         for key in Workspace.__annotations__:
             value = FunctionCollection(channel, key, self._translator)
             setattr(self, key, value)
-
         self.user = FunctionCollection(channel, 'user', self._translator)
 
         _register_well_known_functions(self)

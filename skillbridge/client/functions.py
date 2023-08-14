@@ -27,7 +27,10 @@ class FunctionCollection:
         return self._translate.decode_globals(result)
 
     def __getattr__(self, item: str) -> 'RemoteFunction':
-        return RemoteFunction(self._channel, f'{self._prefix}_{item}', self._translate)
+        if self._prefix == "allFunc":
+            return RemoteFunction(self._channel, f'{item}', self._translate)
+        else:
+            return RemoteFunction(self._channel, f'{self._prefix}_{item}', self._translate)
 
 
 class RemoteFunction:
