@@ -88,7 +88,7 @@ class TcpChannel(Channel):
         return self.connect(sock)
 
     def create_socket(self) -> socket:
-        return socket(AF_INET, SOCK_STREAM)
+        return socket(self.address_family , self.socket_kind)
 
     def configure(self, _: socket) -> None:
         pass
@@ -194,23 +194,21 @@ if platform == 'win32':
 
             @staticmethod
             def create_address(id_: Any) -> Any:
-                port = 7777 if id_ is None else id_
-                return 'localhost', port
+                return 'localhost', 52425
 
         return WindowsChannel
 
 else:
 
     def create_channel_class() -> Type[TcpChannel]:
-        from socket import AF_UNIX
 
         class UnixChannel(TcpChannel):
-            address_family = AF_UNIX
+            address_family = AF_INET
 
             @staticmethod
             def create_address(id_: Any) -> Any:
-                id_ = 'default' if id_ is None else id_
+                #id_ = 'default' if id_ is None else id_
                 #return f'/tmp/skill-server-{id_}.sock'
-                return ('127.0.0.1', 52425)
+                return '127.0.0.1', 52425
 
         return UnixChannel

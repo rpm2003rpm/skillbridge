@@ -1,14 +1,22 @@
-let((_filename _baseName _moduleFolder _logDirectory _executable _unbound)
+; Load the python server script using Inter-Process Comunication
+;------------------------------------------------------------------------------
+let((_filename _baseName _logDirectory _unbound)
 
-    _filename = get_filename(piport)
-    _filename = pcreReplace(pcreCompile("^ +| +$") _filename "" 0)
-    _baseName = substring(_filename 1 strlen(_filename)-2)
-    _moduleFolder = substring(_filename 1 strlen(_filename)-23)
-    _executable = strcat("\"" _baseName "py\"")
+
+    ; filename, excutable name and log directory 
+    ;--------------------------------------------------------------------------
+    _filename     = get_filename(piport)
+    _filename     = pcreReplace(pcreCompile("^ +| +$") _filename "" 0)
+    _baseName     = substring(_filename 1 strlen(_filename)-2)
+    _executable   = strcat("\"" _baseName "py\"")
     _logDirectory = getShellEnvVar("SKILLBRIDGE_LOG_DIRECTORY") || "."
-    _unbound = makeTable("JustForUnbound")[""]
+    _logName      = lsprintf("%s/skillbridge_skill.log" _logDirectory)
+    _unbound      = makeTable("JustForUnbound")[""]
 
-    putd('pyKillServer nil)
+
+    ; Kill the server
+    ; Return: True in case of success or nil otherwise
+    ;--------------------------------------------------------------------------
     defun(pyKillServer ()
         if(!pyStartServer.ipc then
             printf("server was not running\n")
@@ -20,44 +28,54 @@ let((_filename _baseName _moduleFolder _logDirectory _executable _unbound)
         )
     )
 
-    putd('pyReloadScript nil)
+
+    ; Kill the server and reload the python script
+    ; Return: True
+    ;--------------------------------------------------------------------------
     defun(pyReloadScript ()
         printf("killing the old server\n")
         pyKillServer()
-        load(pyReloadServer.filename)
+        load(_filename)
         t
     )
 
-    pyReloadServer.filename = _filename
 
-    putd('pyShowLog nil)
-    defun(pyShowLog (@optional (length 20) "x")
-        let((fin line (lines declare(lines[length])) (ptr 0))
-            fin = infile(pyShowLog.logName)
-
+    ; Show the last len lines of the log file content
+    ; Inputs: len - Optional number of lines. Default is 20 if not specified.
+    ; Return: True
+    ; -------------------------------------------------------------------------
+    defun(pyShowLog (@optional (len 20))
+        let((fin line (lines declare(lines[len])) (ptr 0))
+            fin = infile(_logName)
+	
             while(gets(line fin)
                 lines[ptr] = line
-                ptr = mod(ptr + 1 length)
+                ptr = mod(ptr + 1 len)
             )
 
-            for(i 0 length-1
-                printf("%s" lines[mod(ptr + i length)])
+            for(i 0 len-1
+		line = lines[mod(ptr + i len)]
+		if(boundp(`line) then
+                   printf("%s" line)
+		)
             )
             printf("")
+
         )
         t
     )
 
-    pyShowLog.logName = lsprintf("%s/skillbridge_skill.log" _logDirectory)
 
-    putd('__pyCaptureWarnings nil)
+    ; Not quite sure how it works
+    ;--------------------------------------------------------------------------- 
     defmacro(__pyCaptureWarnings (@rest body)
         `let(((tempPort outstring()))
             unwindProtect(
                 {
                     let(((woport tempPort))
                         ,@body
-                        ; next two lines are to force final warning to be flushed
+                        ; next two lines are to force final 
+                        ; warning to be flushed
                         warn("")
                         getWarn()
                     )
@@ -68,7 +86,17 @@ let((_filename _baseName _moduleFolder _logDirectory _executable _unbound)
         )
     )
 
-    putd('__pyOnData nil)
+
+    ; Process received data. 
+    ; This function evaluates skill expression in the form of a string
+    ; encapsulating the errors in the errset. Error and warnings are captured
+    ; and then processed before being sent to the python script. If no errors
+    ; are found the result is converted to python (__pySkillToPython) and then
+    ; are sent back to the python script.
+    ; Inputs: id - id
+    ;         data - data from python script
+    ; 
+    ;--------------------------------------------------------------------------
     defun(__pyOnData (id data)
         foreach(line parseString(data "\n")
             let((result capturedWarning pythonCode)
@@ -79,8 +107,11 @@ let((_filename _baseName _moduleFolder _logDirectory _executable _unbound)
                 else
                     if(boundp('result) then
                         pythonCode = __pySkillToPython(result)
-                        if((capturedWarning != "" && capturedWarning != "*WARNING* ") then
-                            pythonCode = lsprintf("warning(%L, %s)" capturedWarning pythonCode)
+                        if((capturedWarning != "" && 
+                            capturedWarning != "*WARNING* ") then
+                            pythonCode = lsprintf("warning(%L, %s)" 
+                                                  capturedWarning 
+                                                  pythonCode)
                         )
                         ipcWriteProcess(id lsprintf("success %s\n" pythonCode))
                     else
@@ -91,25 +122,26 @@ let((_filename _baseName _moduleFolder _logDirectory _executable _unbound)
         )
     )
 
-    putd('__pyOnError nil)
+
+    ; IPC error
+    ;--------------------------------------------------------------------------
     defun(__pyOnError (_ data)
         fprintf(stderr "PYTHON: %s\n" data)
     )
 
-    putd('__pyOnFinish nil)
+
+    ; IPC finish
+    ;--------------------------------------------------------------------------
     defun(__pyOnFinish (_ data)
         printf("server was stopped with code %L\n" data)
         pyStartServer.ipc = nil
     )
 
-    putd('__pyOnFinishScript nil)
-    defun(__pyOnFinishScript (_ data)
-        printf("script finished with code %L\n" data)
-    )
 
 
-
-    putd('__pyPropertyListToPython nil)
+    ; Functions to convert skill properties to python
+    ; Not quite sure how it works
+    ;--------------------------------------------------------------------------
     defun(__pyPropertyListToPython (propList)
         strcat("{"
             buildString(
@@ -121,7 +153,6 @@ let((_filename _baseName _moduleFolder _logDirectory _executable _unbound)
         )
     )
 
-    putd('__pySaveToVariableAndReturn nil)
     defun(__pySaveToVariableAndReturn (thing)
         let((repr variableName split objectType address variableSymbol)
             repr = lsprintf("%L" thing)
@@ -148,7 +179,6 @@ let((_filename _baseName _moduleFolder _logDirectory _executable _unbound)
         )
     )
 
-    putd('__pyListToPython nil)
     defun(__pyListToPython (thing)
         strcat(
             "["
@@ -157,7 +187,6 @@ let((_filename _baseName _moduleFolder _logDirectory _executable _unbound)
         )
     )
 
-    putd('__pyVectorToPython nil)
     defun(__pyVectorToPython (collection)
         let((symbol)
             symbol = gensym("__py_vector_")
@@ -166,7 +195,6 @@ let((_filename _baseName _moduleFolder _logDirectory _executable _unbound)
         )
     )
 
-    putd('__pyTableToPython nil)
     defun(__pyTableToPython (collection)
         let((symbol)
             symbol = gensym("__py_table_")
@@ -175,7 +203,6 @@ let((_filename _baseName _moduleFolder _logDirectory _executable _unbound)
         )
     )
 
-    putd('__pySkillToPython nil)
     defun(__pySkillToPython (thing)
         if(thing == t then "True" else
         if(!thing then "None" else
@@ -194,48 +221,52 @@ let((_filename _baseName _moduleFolder _logDirectory _executable _unbound)
         )))))))
     )
 
-    putd('pyStartServer nil)
-    defun(pyStartServer (@key (id "default") (logLevel "INFO") (singleMode nil) (timeout nil) (python "python") "ttggt")
+
+
+    ;Start python server
+    ;---------------------------------------------------------------------------
+    defun(pyStartServer (@key (id "default") 
+                              (logLevel "INFO") 
+                              (timeout nil) 
+                              (python "python"))
+        ; Server is already running
+        ;----------------------------------------------------------------------
         if(pyStartServer.ipc then
             fprintf(stderr, "server is already running\n")
             nil
+        ; Start server
+        ;----------------------------------------------------------------------
         else
-            let(((executableWithArgs lsprintf("%s %L %s" pyStartServer.exe id logLevel)))
-                if(singleMode then
-                    executableWithArgs = strcat(executableWithArgs "--single")
-                )
+            let(((executableWithArgs lsprintf("%s %s %s" 
+    					      _executable 
+                                              id 
+                                              logLevel)))
                 if(timeout then
-                    executableWithArgs = lsprintf("%s --timeout %L" executableWithArgs timeout)
+                    executableWithArgs = lsprintf("%s --timeout %L" 
+                                                  executableWithArgs 
+                                                  timeout)
                 )
-                executableWithArgs = lsprintf("\"%s\" %s" python executableWithArgs)
-
-                pyStartServer.ipc = ipcBeginProcess(executableWithArgs "" '__pyOnData '__pyOnError '__pyOnFinish pyStartServer.logName)
+                executableWithArgs = lsprintf("\"%s\" %s" 
+                                              python 
+                                              executableWithArgs)
+                pyStartServer.ipc = ipcBeginProcess(executableWithArgs 
+                                                    "" 
+                                                    '__pyOnData 
+                                                    '__pyOnError 
+                                                    '__pyOnFinish 
+                                                    _logName)
                 t
             )
         )
     )
 
-    pyStartServer.logName = lsprintf("%s/skillbridge_skill.log" _logDirectory)
-
-    putd('pyRunScript nil)
-    defun(pyRunScript (script @key (python "python") (args nil) (block nil) "ttlg")
-        let((command process)
-            command = lsprintf("%s %s %s" python script buildString(args))
-            process = ipcBeginProcess(command "" '__pyOnData '__pyOnError '__pyOnFinishScript pyRunScript.logName)
-
-            if(block then ipcWait(process) else process)
-        )
-    )
-
-    pyRunScript.logName = lsprintf("%s/skillbridge_script.log" _logDirectory)
-
     pyStartServer.ipc = nil
-    pyStartServer.exe = _executable
+    _executable
 
     printf("Available commands:\n")
-    printf("\tpyStartServer ?id \"default\" ?logLevel \"WARNING\" ?singleMode nil ?timeout nil ?python \"python\"\n")
+    printf("\tpyStartServer ?id \"default\" ?logLevel \"INFO\" ")
+    printf("?timeout nil ?python \"python\"\n")
     printf("\tpyKillServer\n")
     printf("\tpyReloadScript\n")
     printf("\tpyShowLog [numberOfLines]\n")
-    printf("\tpyRunScript path ?args list() ?python \"python\"\n")
 )
