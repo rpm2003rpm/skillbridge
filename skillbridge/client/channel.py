@@ -131,11 +131,22 @@ class TcpChannel(Channel):
             self.socket.sendall(data.encode())
 
     #--------------------------------------------------------------------------
+    # Receive all
+    #--------------------------------------------------------------------------
+    def _receive_all(self, remaining: int) -> Iterable[bytes]:
+        data = b''
+        while remaining:
+            chunk = self.socket.recv(remaining)
+            remaining -= len(chunk)
+            data = data + chunk
+        return data
+
+    #--------------------------------------------------------------------------
     # Receive
     #--------------------------------------------------------------------------
     def _receive_only(self) -> str:
         try:
-            received_length_raw = self.socket.recv(10)
+            received_length_raw = self._receive_all(10)
         except KeyboardInterrupt:
             raise RuntimeError(
                 "Receive aborted, you should restart the skill server or"
@@ -146,7 +157,7 @@ class TcpChannel(Channel):
         if not received_length_raw:
             raise RuntimeError("The server unexpectedly died")
         received_length = int(received_length_raw)
-        response = self.socket.recv(received_length).decode()
+        response = self._receive_all(received_length).decode()
         return self.decode_response(response)
 
     #--------------------------------------------------------------------------

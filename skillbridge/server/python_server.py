@@ -68,14 +68,16 @@ class Server(ThreadingMixIn, TCPServer):
 #-------------------------------------------------------------------------------
 class Handler(BaseRequestHandler):
 
-    #---------------------------------------------------------------------------
-    # Receive all data from the socket
-    #---------------------------------------------------------------------------
-    def receive_all(self, remaining):
+    #--------------------------------------------------------------------------
+    # Receive all
+    #--------------------------------------------------------------------------
+    def _receive_all(self, remaining):
+        data = b''
         while remaining:
-            data = self.request.recv(remaining)
-            remaining -= len(data)
-            yield data
+            chunk = self.request.recv(remaining)
+            remaining -= len(chunk)
+            data = data + chunk
+        return data
 
     #---------------------------------------------------------------------------
     # handle one request 
@@ -83,14 +85,14 @@ class Handler(BaseRequestHandler):
     # answer from standard output, and send it back to socket.
     #---------------------------------------------------------------------------
     def handle_one_request(self):
-        length = self.request.recv(10)
+        length = self._receive_all(10)
         if not length:
             logger.warning("client {0} lost connection".format(self.client_address))
             return False
         logger.debug("got length {0}".format(length))
 
         length = int(length)
-        command = b''.join(self.receive_all(length))
+        command = self._receive_all(length)
 
         logger.debug("received {0} bytes".format(len(command)))
 
