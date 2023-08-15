@@ -146,10 +146,7 @@ class TcpChannel(Channel):
         if not received_length_raw:
             raise RuntimeError("The server unexpectedly died")
         received_length = int(received_length_raw)
-        print(received_length)
         response = self.socket.recv(received_length).decode()
-        print(response)
-
         return self.decode_response(response)
 
     #--------------------------------------------------------------------------
