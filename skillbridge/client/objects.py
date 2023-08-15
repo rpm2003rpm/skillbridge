@@ -14,7 +14,7 @@ from typing import (
 from .functions import RemoteFunction
 from .hints import Skill, SkillCode, Symbol
 from .remote import RemoteVariable
-from .translator import ParseError, snake_to_camel
+from .translator import ParseError
 from .var import Var
 
 
@@ -142,7 +142,7 @@ class LazyList(RemoteVariable):
     arg = Var('arg')
 
     def __getattr__(self, attribute: str) -> 'LazyList':
-        variable = SkillCode(f"{self._variable}~>{snake_to_camel(attribute)}")
+        variable = SkillCode(f"{self._variable}~>{attribute}")
         return LazyList(self._channel, self._translator, variable)
 
     def __str__(self) -> str:
@@ -159,9 +159,9 @@ class LazyList(RemoteVariable):
         if not args and not kwargs:
             return self
 
-        arg_filters = [SkillCode(snake_to_camel(arg)) for arg in args]
+        arg_filters = [SkillCode(arg) for arg in args]
         kwarg_filters = [
-            SkillCode(f"{snake_to_camel(key)} == {self._translator.encode(value)}")
+            SkillCode(f"{key} == {self._translator.encode(value)}")
             for key, value in kwargs.items()
         ]
         filters = self._condition(arg_filters + kwarg_filters)
@@ -231,13 +231,13 @@ class RemoteTable(RemoteCollection, MutableMapping[Skill, Skill]):
             raise KeyError(item) from None
 
     def __getattr__(self, item: str) -> Skill:
-        return self[Symbol(snake_to_camel(item))]
+        return self[Symbol(item)]
 
     def __setattr__(self, key: str, value: Skill) -> None:
         if key in self._attributes:
             super().__setattr__(key, value)
         else:
-            self[Symbol(snake_to_camel(key))] = value
+            self[Symbol(key)] = value
 
     def __iter__(self) -> Iterator[Skill]:
         code = self._translator.encode_getattr(self.__repr_skill__(), '?')

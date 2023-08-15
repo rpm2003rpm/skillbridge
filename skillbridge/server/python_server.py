@@ -9,6 +9,7 @@ from logging import WARNING, basicConfig, getLogger
 from os import getenv
 from select import select
 from sys import argv, stderr, stdin, stdout
+import re
 
 
 #-------------------------------------------------------------------------------
@@ -103,8 +104,8 @@ class Handler(BaseRequestHandler):
         result = read_from_skill(self.server.skill_timeout).encode()  # type: ignore
         logger.debug("got response from skill {0}".format(result[:1000]))
 
-        self.request.send('{0}'.format(len(result)).encode())
-        self.request.send(result)
+        result = '%10s%s' % (len(result), result)
+        self.request.send(result.encode())
         logger.debug("sent response to client")
         return True
 

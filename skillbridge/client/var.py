@@ -1,10 +1,15 @@
+#------------------------------------------------------------------------------
+# Import
+#------------------------------------------------------------------------------
 from dataclasses import dataclass
 from typing import Any, Union
-
 from .hints import SkillCode
-from .translator import DefaultTranslator, python_value_to_skill, snake_to_camel
+from .translator import DefaultTranslator, python_value_to_skill
 
 
+#------------------------------------------------------------------------------
+# Variable class
+#------------------------------------------------------------------------------
 @dataclass(frozen=True)
 class Var:
     name: str
@@ -19,7 +24,7 @@ class Var:
         return f"Var({self.name!r})"
 
     def __getattr__(self, item: str) -> 'Var':
-        return Var(f'{self.name}->{snake_to_camel(item)}')
+        return Var(f'{self.name}->{item}')
 
     def __getitem__(self, item: Union[str, int]) -> 'Var':
         if isinstance(item, str):

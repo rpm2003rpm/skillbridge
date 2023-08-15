@@ -3,7 +3,7 @@ from typing import Any, Tuple, Union
 
 from .channel import Channel
 from .hints import SkillCode
-from .translator import Translator, snake_to_camel
+from .translator import Translator
 from .var import Var
 
 
@@ -16,7 +16,7 @@ class GlobalVar:
         self._translator = translator
 
     def __call__(self) -> Any:
-        response = self._channel.send(snake_to_camel(self.name))
+        response = self._channel.send(self.name)
         return self._translator.decode(response)
 
     def __str__(self) -> str:
@@ -31,7 +31,7 @@ class GlobalVar:
         assert self._translator.decode(response) is None
 
     def __repr_skill__(self) -> SkillCode:
-        return SkillCode(snake_to_camel(self.name))
+        return SkillCode(self.name)
 
     def map(self, code: Any, **extra: Any) -> Var:
         assert 'i' not in extra, "Cannot use loop var 'i' twice"

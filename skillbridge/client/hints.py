@@ -1,9 +1,13 @@
-from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, NewType, Set, Tuple, Union
+#------------------------------------------------------------------------------
+# Import
+#------------------------------------------------------------------------------
+from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, \
+                   NewType, Set, Tuple, Union
+
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing_extensions import Protocol
 else:
-
     class Protocol:
         pass
 
@@ -63,17 +67,21 @@ class SkillDict(Dict[str, Skill]):
     pass
 
 
-class Symbol(NamedTuple):
-    name: str
+class Symbol():
+    
+    def __init__(self, value):
+        self.value = value
 
     def __repr_skill__(self) -> SkillCode:
-        return SkillCode(f"'{self.name}")
-
+        if not isinstance(self.value, str):
+            raise AttributeError("error")
+        return SkillCode(f"'{self.value}")
+        
     def __str__(self) -> str:
-        return f"Symbol({self.name})"
+        return f"Symbol({self.value})"
 
     def __repr__(self) -> str:
-        return f"Symbol({self.name!r})"
+        return f"Symbol({self.value})"
 
 
 class Key(NamedTuple):

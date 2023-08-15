@@ -1,0 +1,186 @@
+import logging
+from argparse import ArgumentParser
+from logging import WARNING, basicConfig, getLogger
+from os import getenv, unlink
+from select import select
+from SocketServer import BaseRequestHandler, BaseServer, StreamRequestHandler, ThreadingMixIn
+from sys import argv, platform, stderr, stdin, stdout
+
+LOG_FILE = './skillbridge_server.log'
+LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
+LOG_DATE_FORMAT = '%d.%m.%Y %H:%M:%S'
+LOG_LEVEL = WARNING
+
+basicConfig(filename=LOG_FILE, format=LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
+logger = getLogger("python-server")
+
+
+def send_to_skill(data):
+    stdout.write(data)
+    stdout.write("\n")
+    stdout.flush()
+
+
+def read_from_skill(timeout=None):
+    readable = data_ready(timeout)
+
+    if readable:
+        return stdin.readline()
+
+    logger.debug("timeout")
+    return 'failure <timeout>'
+
+
+def create_windows_server_class(single):
+    from SocketServer import TCPServer
+
+    class SingleWindowsServer(TCPServer):
+        request_queue_size = 0
+        allow_reuse_address = True
+
+        def __init__(self, port):
+            super().__init__(('localhost', port), handler)
+
+        def server_bind(self):
+            try:
+                from socket import SIO_LOOPBACK_FAST_PATH  # type: ignore
+
+                self.socket.ioctl(SIO_LOOPBACK_FAST_PATH, True)  # type: ignore
+            except ImportError:
+                pass
+            super().server_bind()
+
+    class ThreadingWindowsServer(ThreadingMixIn, SingleWindowsServer):
+        pass
+
+    return SingleWindowsServer if single else ThreadingWindowsServer
+
+
+def data_windows_ready(timeout=None):
+    return True
+
+
+def create_unix_server_class(single, handler):
+    from SocketServer import UnixStreamServer
+
+    class SingleUnixServer(UnixStreamServer):
+        request_queue_size = 0
+        allow_reuse_address = True
+
+        def __init__(self, file="1"):
+            self.path = '/tmp/skill-server.sock'
+            try:
+                unlink(self.path)
+            except Exception as e:
+                pass
+            super().__init__(self.path, handler)
+
+    class ThreadingUnixServer(ThreadingMixIn, SingleUnixServer):
+        pass
+
+    return SingleUnixServer if single else ThreadingUnixServer
+
+
+def data_unix_ready(timeout):
+    readable, _, _ = select([stdin], [], [], timeout)
+
+    return bool(readable)
+
+
+if platform == 'win32':
+    data_ready = data_windows_ready
+    create_server_class = create_windows_server_class
+else:
+    create_server_class = create_unix_server_class
+    data_ready = data_unix_ready
+
+
+class Handler(StreamRequestHandler):
+    def receive_all(self, remaining):
+        while remaining:
+            data = self.request.recv(remaining)
+            remaining -= len(data)
+            yield data
+
+    def handle_one_request(self):
+        length = self.request.recv(10)
+        if not length:
+            logger.warning("client {} lost connection".format(self.client_address))
+            return False
+        logger.debug("got length {}".format(length))
+
+        length = int(length)
+        command = b''.join(self.receive_all(length))
+
+        logger.debug("received {} bytes".format(len(command)))
+
+        if command.startswith(b'close'):
+            logger.debug("client {} disconnected".format(self.client_address))
+            return False
+        logger.debug("got data {}".format(command[:1000].decode()))
+
+        send_to_skill(command.decode())
+        logger.debug("sent data to skill")
+        result = read_from_skill(self.server.skill_timeout).encode()  # type: ignore
+        logger.debug("got response from skill {!r}".format(result[:1000]))
+
+        self.request.send('{:10}'.format(len(result)).encode())
+        self.request.send(result)
+        logger.debug("sent response to client")
+
+        return True
+
+    def try_handle_one_request(self):
+        try:
+            return self.handle_one_request()
+        except Exception as e:
+            logger.exception(e)
+            return False
+
+    def handle(self):
+        logger.info("client {} connected".format(self.client_address))
+        client_is_connected = True
+        while client_is_connected:
+            client_is_connected = self.try_handle_one_request()
+
+
+def main(id, log_level, notify, single, timeout = None):
+    logger.setLevel(getattr(logging, log_level))
+
+    server_class = create_server_class
+
+    #with server_class(id, Handler) as server:
+    server = server_class(single, Handler)
+    if True:
+        server.skill_timeout = timeout  # type: ignore
+        logger.info(
+            "starting server id={} log={} notify={} ".format(id, log_level, notify),
+            "single={} timeout={}".format(single, timeout)
+        )
+        if notify:
+            send_to_skill('running')
+        server.serve_forever()
+
+
+if __name__ == '__main__':
+    log_levels = "DEBUG WARNING INFO ERROR CRITICAL FATAL".split()
+    argument_parser = ArgumentParser(argv[0])
+    if platform == 'win32':
+        argument_parser.add_argument('id', type=int)
+    else:
+        argument_parser.add_argument('id')
+    argument_parser.add_argument('log_level', choices=log_levels)
+    argument_parser.add_argument('--notify', action='store_true')
+    argument_parser.add_argument('--single', action='store_true')
+    argument_parser.add_argument('--timeout', type=float, default=None)
+
+    ns = argument_parser.parse_args()
+
+    if platform == 'win32' and ns.timeout is not None:
+        print >> sys.stderr, "Timeout is not possible on Windows"
+        exit(1)
+
+    try:
+        main(ns.id, ns.log_level, ns.notify, ns.single, ns.timeout)
+    except KeyboardInterrupt:
+        pass

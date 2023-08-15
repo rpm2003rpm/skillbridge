@@ -1,19 +1,31 @@
+#------------------------------------------------------------------------------
+# Import
+#------------------------------------------------------------------------------
 from json import dumps, loads
 from re import findall, sub
-from typing import Any, Callable, Dict, Iterable, List, Match, NoReturn, Optional, Union, cast
+from typing import Any, Callable, Dict, Iterable, List, \
+                   Match, NoReturn, Optional, Union, cast
 from warnings import warn_explicit
-
 from .hints import Skill, SkillCode, Symbol
 
 
+#------------------------------------------------------------------------------
+# Parse Error class
+#------------------------------------------------------------------------------
 class ParseError(Exception):
     pass
 
 
+#------------------------------------------------------------------------------
+# Raise error if errors are found
+#------------------------------------------------------------------------------
 def _raise_error(message: str) -> NoReturn:
     raise ParseError(message)
 
 
+#------------------------------------------------------------------------------
+# Raise error if errors are found
+#------------------------------------------------------------------------------
 def _show_warning(message: str, result: Any) -> Any:
     for i, line in enumerate(message.splitlines(keepends=False)):
         warn_explicit(line.lstrip("*WARNING*"), UserWarning, "Skill response", i)
@@ -21,6 +33,9 @@ def _show_warning(message: str, result: Any) -> Any:
     return result
 
 
+#------------------------------------------------------------------------------
+# Context for evaluating a string containing python code
+#------------------------------------------------------------------------------
 _STATIC_EVAL_CONTEXT = {
     'Symbol': Symbol,
     'error': _raise_error,
@@ -28,37 +43,31 @@ _STATIC_EVAL_CONTEXT = {
 }
 
 
-def _skill_value_to_python(string: str, eval_context: Optional[Dict[str, Any]] = None) -> Skill:
+#------------------------------------------------------------------------------
+# Evaluate a string containing python code
+#------------------------------------------------------------------------------
+def _skill_value_to_python(string: str, 
+                           eval_context: Optional[Dict[str, Any]] = None) -> Skill:
     return eval(string, eval_context or _STATIC_EVAL_CONTEXT)  # type: ignore
 
 
-def _upper_without_first(match: Match[str]) -> str:
-    return match.group()[1:].upper()
-
-
-def snake_to_camel(snake: str) -> str:
-    if snake.startswith('_') or '_' not in snake:
-        return snake
-    return sub(r'_[a-zA-Z]', _upper_without_first, snake)
-
-
-def camel_to_snake(camel: str) -> str:
-    if camel[0].isupper():
-        return camel
-    parts = findall("[a-z0-9]+|[A-Z][a-z0-9]+|[A-Z]+(?=[A-Z_][a-z]|$)", camel)
-    return '_'.join(
-        part.lower() if not part[-1].isupper() or len(part) == 1 else part for part in parts
-    )
-
-
+#------------------------------------------------------------------------------
+# Convert a python expression to skill
+#------------------------------------------------------------------------------
 def python_value_to_skill(value: Skill) -> SkillCode:
     try:
         return value.__repr_skill__()  # type: ignore
     except AttributeError:
         pass
-
+    def __repr_skill__(self) -> SkillCode:
+        pass
+    
+    if isinstance(value, Symbol):
+        return SkillCode(f"'{python_value_to_skill(value.value)}")
+    
     if isinstance(value, dict):
-        items = ' '.join(f"'{key} {python_value_to_skill(value)}" for key, value in value.items())
+        items = ' '.join(f"'{key} {python_value_to_skill(value)}" \
+                for key, value in value.items())
         return SkillCode(f'list(nil {items})')
 
     if value is False or value is None:
@@ -70,7 +79,11 @@ def python_value_to_skill(value: Skill) -> SkillCode:
     if isinstance(value, (int, float, str)):
         return SkillCode(dumps(value))
 
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, (tuple)):
+        inner = ' '.join(python_value_to_skill(item) for item in value)
+        return SkillCode(f'({inner})')
+
+    if isinstance(value, (list)):
         inner = ' '.join(python_value_to_skill(item) for item in value)
         return SkillCode(f'(list {inner})')
 
@@ -78,24 +91,25 @@ def python_value_to_skill(value: Skill) -> SkillCode:
     raise RuntimeError(f"Cannot convert object {type_!r} to skill.") from None
 
 
-CaseSwitcher = Callable[[str], str]
-
-
-def build_skill_path(
-    components: Iterable[Union[str, int]], case_switcher: CaseSwitcher = snake_to_camel
-) -> SkillCode:
+#------------------------------------------------------------------------------
+# ????
+#------------------------------------------------------------------------------
+def build_skill_path(components: Iterable[Union[str, int]]) -> SkillCode:
     it = iter(components)
-    path = case_switcher(str(next(it)))
+    path = str(next(it))
 
     for component in it:
         if isinstance(component, int):
             path = f'(nth {component} {path})'
         else:
-            path = f'{path}->{case_switcher(component)}'
+            path = f'{path}->{component}'
 
     return SkillCode(path)
 
 
+#------------------------------------------------------------------------------
+# ????
+#------------------------------------------------------------------------------
 def build_python_path(components: Iterable[Union[str, int]]) -> SkillCode:
     it = iter(components)
     path = str(next(it))
@@ -109,15 +123,26 @@ def build_python_path(components: Iterable[Union[str, int]]) -> SkillCode:
     return SkillCode(path)
 
 
+#------------------------------------------------------------------------------
+# Translator class
+#------------------------------------------------------------------------------
 class Translator:
+
+    #--------------------------------------------------------------------------
+    # Encode a skill function call
+    #--------------------------------------------------------------------------
     @staticmethod
     def encode_call(func_name: str, *args: Skill, **kwargs: Skill) -> SkillCode:
         args_code = ' '.join(map(python_value_to_skill, args))
-        kw_keys = map(snake_to_camel, kwargs)
+        kw_keys = kwargs
         kw_values = map(python_value_to_skill, kwargs.values())
-        kwargs_code = ' '.join(f'?{key} {value}' for key, value in zip(kw_keys, kw_values))
+        kwargs_code = ' '.join(f'?{key} {value}' \
+                               for key, value in zip(kw_keys, kw_values))
         return SkillCode(f'{func_name}({args_code} {kwargs_code})')
 
+    #--------------------------------------------------------------------------
+    # Encode a dir call
+    #--------------------------------------------------------------------------
     @staticmethod
     def encode_dir(obj: SkillCode) -> SkillCode:
         parts = ' '.join(
@@ -130,72 +155,105 @@ class Translator:
         code = f'mapcar(lambda((attr) sprintf(nil "%s" attr)) nconc({parts}))'
         return SkillCode(code)
 
+    #--------------------------------------------------------------------------
+    # Decode dir call
+    #--------------------------------------------------------------------------
     @staticmethod
     def decode_dir(code: str) -> List[str]:
         attributes = _skill_value_to_python(code) or ()
-        return [camel_to_snake(attr) for attr in cast(List[str], attributes)]
+        return [attr for attr in cast(List[str], attributes)]
 
+    #--------------------------------------------------------------------------
+    # Decode dir call
+    #--------------------------------------------------------------------------
     @staticmethod
-    def encode_getattr(
-        obj: SkillCode, key: str, case_switcher: CaseSwitcher = snake_to_camel
-    ) -> SkillCode:
-        return build_skill_path([obj, key], case_switcher)
+    def encode_getattr(obj: SkillCode, key: str) -> SkillCode:
+        return build_skill_path([obj, key])
 
-    @staticmethod
-    def encode_globals(prefix: str) -> SkillCode:
-        return SkillCode(f'buildString(listFunctions("^{prefix}[A-Z]"))')
-
+    #--------------------------------------------------------------------------
+    # Encode read variable
+    #--------------------------------------------------------------------------
     @staticmethod
     def encode_read_variable(name: str) -> SkillCode:
-        return SkillCode(snake_to_camel(name))
+        return SkillCode(name)
 
+    #--------------------------------------------------------------------------
+    # Encode assign to variable
+    #--------------------------------------------------------------------------
     def encode_assign(self, variable: str, value: Any) -> SkillCode:
         encoded_value = self.encode(value)
-        return SkillCode(f'{snake_to_camel(variable)} = {encoded_value} nil')
+        return SkillCode(f'{variable} = {encoded_value} nil')
 
-    @staticmethod
-    def decode_globals(code: str) -> List[str]:
-        return [camel_to_snake(f).split('_', maxsplit=1)[1] for f in loads(code).split()]
-
+    #--------------------------------------------------------------------------
+    # Encode help
+    #--------------------------------------------------------------------------
     @staticmethod
     def encode_help(symbol: str) -> SkillCode:
         code = f"""
             _text = outstring()
-            poport = _text help({snake_to_camel(symbol)})
+            poport = _text help({symbol})
             poport = stdout getOutstring(_text)
         """.replace(
             "\n", " "
         )
         return SkillCode(code)
 
+    #--------------------------------------------------------------------------
+    # Decode help
+    #--------------------------------------------------------------------------
     @staticmethod
     def decode_help(help_: str) -> str:
         return loads(help_)  # type: ignore
 
+    #--------------------------------------------------------------------------
+    # Encode set attibute
+    #--------------------------------------------------------------------------
     @staticmethod
-    def encode_setattr(
-        obj: SkillCode, key: str, value: Any, case_switcher: CaseSwitcher = snake_to_camel
-    ) -> SkillCode:
-        code = build_skill_path([obj, key], case_switcher)
+    def encode_setattr(obj: SkillCode, key: str, value: Any) -> SkillCode:
+        code = build_skill_path([obj, key])
         value = python_value_to_skill(value)
         return SkillCode(f'{code} = {value}')
 
+    #--------------------------------------------------------------------------
+    # Encode
+    #--------------------------------------------------------------------------
     def encode(self, value: Skill) -> SkillCode:
         raise NotImplementedError
 
+    #--------------------------------------------------------------------------
+    # Decode
+    #--------------------------------------------------------------------------
     def decode(self, code: str) -> Skill:
         raise NotImplementedError
 
 
+#------------------------------------------------------------------------------
+# Encode set attibute
+#------------------------------------------------------------------------------
 class DefaultTranslator(Translator):
+
+    #--------------------------------------------------------------------------
+    # Constructor
+    #--------------------------------------------------------------------------
     def __init__(self) -> None:
         self.context = _STATIC_EVAL_CONTEXT.copy()
 
-    def register_remote_variable_type(self, name: str, constructor: Callable[[str], Skill]) -> None:
+    #--------------------------------------------------------------------------
+    # register a new context for translation
+    #--------------------------------------------------------------------------
+    def register_new_context(self, 
+                             name: str, 
+                             constructor: Callable[[str], Skill]) -> None:
         self.context[name] = constructor
-
+        
+    #--------------------------------------------------------------------------
+    # Encode
+    #--------------------------------------------------------------------------
     def encode(self, value: Skill) -> SkillCode:
         return python_value_to_skill(value)
 
+    #--------------------------------------------------------------------------
+    # Decode
+    #--------------------------------------------------------------------------
     def decode(self, code: str) -> Skill:
         return _skill_value_to_python(code, self.context)

@@ -4,13 +4,13 @@ from pathlib import Path
 from re import fullmatch, sub
 from sys import executable, version_info
 
-from .client.functions import FunctionCollection, keys
+from .client.functions import keys, FunGroup
 from .client.globals import Globals, GlobalVar
 from .client.hints import Function, Key, SkillCode, SkillList, SkillTuple, Symbol
 from .client.objects import LazyList, RemoteObject, RemoteTable, RemoteVector
 from .client.translator import ParseError
 from .client.var import Var
-from .client.workspace import Workspace, current_workspace
+from .client.workspace import Workspace
 
 __all__ = [
     'Workspace',
