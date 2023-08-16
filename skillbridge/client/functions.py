@@ -1,7 +1,6 @@
 #------------------------------------------------------------------------------
 # Import
 #------------------------------------------------------------------------------
-from functools import lru_cache
 from typing import List
 from .channel import Channel
 from .hints import Key, Skill, SkillCode

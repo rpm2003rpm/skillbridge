@@ -270,3 +270,33 @@ let((_filename _baseName _logDirectory _unbound)
     printf("\tpyReloadScript\n")
     printf("\tpyShowLog [numberOfLines]\n")
 )
+
+(procedure (abWaveToList wave @key transpose)
+(let (xList yList xyList len
+(xVec (drGetWaveformXVec wave))
+(yVec (drGetWaveformYVec wave))
+)
+(setq len (drVectorLength xVec))
+;-----------------------------------------------------------------
+; Return value of this if is the list
+;-----------------------------------------------------------------
+(if transpose
+(progn
+(for i 0 (sub1 len)
+(setq xList (tconc xList (drGetElem xVec i)))
+(setq yList (tconc yList (drGetElem yVec i)))
+)
+(list (car xList) (car yList))
+)
+; else
+(progn
+(for i 0 (sub1 len)
+(setq xyList (tconc xyList (list (drGetElem xVec i)
+(drGetElem yVec i))))
+)
+(car xyList)
+)
+) ; if
+) ; let
+) ; procedure
+
