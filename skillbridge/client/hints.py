@@ -72,11 +72,6 @@ class Symbol():
     def __init__(self, value):
         self.value = value
 
-    def __repr_skill__(self) -> SkillCode:
-        if not isinstance(self.value, str):
-            raise AttributeError("error")
-        return SkillCode(f"'{self.value}")
-        
     def __str__(self) -> str:
         return f"Symbol({self.value})"
 

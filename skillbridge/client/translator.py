@@ -63,7 +63,11 @@ def python_value_to_skill(value: Skill) -> SkillCode:
         pass
     
     if isinstance(value, Symbol):
-        return SkillCode(f"'{python_value_to_skill(value.value)}")
+        value = value.value
+        if isinstance(value, str):
+            return SkillCode(f"'{value}")
+        else: 
+            return SkillCode(f"'{python_value_to_skill(value)}")
     
     if isinstance(value, dict):
         items = ' '.join(f"'{key} {python_value_to_skill(value)}" \

@@ -85,6 +85,7 @@ class Channel:
 class TcpChannel(Channel):
     address_family = AF_INET
     socket_kind = SOCK_STREAM
+    address = ('127.0.0.1', 52425)
 
     #--------------------------------------------------------------------------
     # Constructor
@@ -92,7 +93,6 @@ class TcpChannel(Channel):
     def __init__(self):
         super().__init__(1_000_000)
         self.connected = False
-        self.address = ('127.0.0.1', 52425)
         self.socket = self.start()
 
     #--------------------------------------------------------------------------
