@@ -3,13 +3,14 @@
 #-------------------------------------------------------------------------------
 import logging
 import socket
-from SocketServer import BaseRequestHandler, TCPServer, ThreadingMixIn
+from SocketServer import BaseRequestHandler, TCPServer, UnixStreamServer
 from argparse import ArgumentParser
 from logging import WARNING, basicConfig, getLogger
 from os import getenv
 from select import select
 from sys import argv, stderr, stdin, stdout
 import re
+import os
 
 
 #-------------------------------------------------------------------------------
@@ -57,9 +58,17 @@ def read_from_skill(timeout):
 #-------------------------------------------------------------------------------
 # Server class
 #-------------------------------------------------------------------------------
-class Server(ThreadingMixIn, TCPServer):
+class Server(TCPServer):
     def server_bind(self):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.bind(self.server_address)
+
+
+#-------------------------------------------------------------------------------
+# Server class
+#-------------------------------------------------------------------------------
+class ServerLocal(UnixStreamServer):
+    def server_bind(self):
         self.socket.bind(self.server_address)
 
 
@@ -130,21 +139,31 @@ class Handler(BaseRequestHandler):
         client_is_connected = True
         while client_is_connected:
             client_is_connected = self.try_handle_one_request()
+        logger.info("client {0} disconnected".format(self.client_address))
 
 
 #-------------------------------------------------------------------------------
 # Main
 #-------------------------------------------------------------------------------
-def main(nid, log_level, timeout):
+def main(log_level, timeout, address):
     logger.setLevel(getattr(logging, log_level))
 
-    server = Server(("0.0.0.0", 52425), Handler)
+    pattern = r"[ ]*([0-9]+.[0-9]+.[0-9]+.[0-9])[ ]*,[ ]*([0-9]*)[ ]*"
+   
+    if(re.search(pattern, address)):
+        m = re.findall(pattern, address)[0]
+        server = Server((m[0], int(m[1])), Handler)
+    else:
+        try:
+            os.unlink(address)
+        except OSError:
+            if os.path.exists(address):
+                raise
+        server = ServerLocal(address, Handler)
     server.skill_timeout = timeout
-
-    logger.info(
-        "starting server id={0} log={1} timeout={2}".format(nid, 
-                                                            log_level,
-                                                            timeout)
+    logger.info("starting server addr={0} log={1} timeout={2}".format(address, 
+                	                                              log_level,
+                        	                                      timeout)
     )
     server.serve_forever()
 
@@ -155,13 +174,12 @@ def main(nid, log_level, timeout):
 if __name__ == '__main__':
     log_levels = "DEBUG WARNING INFO ERROR CRITICAL FATAL".split()
     argument_parser = ArgumentParser(argv[0])
-    argument_parser.add_argument('id')
+    argument_parser.add_argument('address', type=str, default="0.0.0.0,52425")
     argument_parser.add_argument('log_level', choices=log_levels)
     argument_parser.add_argument('--timeout', type=float, default=None)
-
     ns = argument_parser.parse_args()
 
     try:
-        main(ns.id, ns.log_level, ns.timeout)
+        main(ns.log_level, ns.timeout, ns.address)
     except KeyboardInterrupt:
         pass

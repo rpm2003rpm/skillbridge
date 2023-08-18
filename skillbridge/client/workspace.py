@@ -9,6 +9,8 @@ from .globals import DirectGlobals, Globals
 from .hints import Symbol
 from .objects import RemoteObject, RemoteTable, RemoteVector
 from .translator import DefaultTranslator, Translator
+from socket import AF_INET, SOCK_STREAM
+
 
 #------------------------------------------------------------------------------
 # Workspace class
@@ -89,10 +91,13 @@ class Workspace:
     # Open a communication channel
     #--------------------------------------------------------------------------
     @classmethod
-    def open(cls, log_exception: bool = True) -> 'Workspace':
+    def open(cls, 
+             address = ('127.0.0.1', 52425), 
+             family = AF_INET,
+             kind = SOCK_STREAM) -> 'Workspace':
         try:
             channel_class = create_channel_class()
-            channel = channel_class()
+            channel = channel_class(address, family, kind)
         except:
             raise RuntimeError("Failed to open a comunication channel")
         return Workspace(channel)
@@ -100,7 +105,7 @@ class Workspace:
     #--------------------------------------------------------------------------
     # Close the communication channel
     #--------------------------------------------------------------------------
-    def close(self, log_exception: bool = True) -> None:
+    def close(self) -> None:
         try:
             self._channel.close()
         except:  # noqa

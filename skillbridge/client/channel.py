@@ -83,14 +83,14 @@ class Channel:
 # TCP Channel
 #------------------------------------------------------------------------------
 class TcpChannel(Channel):
-    address_family = AF_INET
-    socket_kind = SOCK_STREAM
-    address = ('127.0.0.1', 52425)
 
     #--------------------------------------------------------------------------
     # Constructor
     #--------------------------------------------------------------------------
-    def __init__(self):
+    def __init__(self, address, family, kind):
+        self.address = address
+        self.address_family = family
+        self.socket_kind = kind
         super().__init__(1_000_000)
         self.connected = False
         self.socket = self.start()

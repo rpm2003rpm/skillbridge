@@ -225,7 +225,7 @@ let((_filename _baseName _logDirectory _unbound)
 
     ;Start python server
     ;---------------------------------------------------------------------------
-    defun(pyStartServer (@key (id "default") 
+    defun(pyStartServer (@key (address "0.0.0.0,52425") 
                               (logLevel "INFO") 
                               (timeout nil) 
                               (python "python"))
@@ -238,8 +238,8 @@ let((_filename _baseName _logDirectory _unbound)
         ;----------------------------------------------------------------------
         else
             let(((executableWithArgs lsprintf("%s %s %s" 
-    					      _executable 
-                                              id 
+                                              _executable 
+                                              address
                                               logLevel)))
                 if(timeout then
                     executableWithArgs = lsprintf("%s --timeout %L" 
@@ -264,7 +264,7 @@ let((_filename _baseName _logDirectory _unbound)
     _executable
 
     printf("Available commands:\n")
-    printf("\tpyStartServer ?id \"default\" ?logLevel \"INFO\" ")
+    printf("\tpyStartServer ?address \"0.0.0.0,52425\" ?logLevel \"INFO\" ")
     printf("?timeout nil ?python \"python\"\n")
     printf("\tpyKillServer\n")
     printf("\tpyReloadScript\n")
