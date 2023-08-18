@@ -20,7 +20,15 @@ class Workspace:
     #--------------------------------------------------------------------------
     # Constructor
     #--------------------------------------------------------------------------
-    def __init__(self, channel: Channel) -> None:
+    def __init__(self, 
+                 address = ('127.0.0.1', 52425), 
+                 family = AF_INET,
+                 kind = SOCK_STREAM):
+        try:
+            channel_class = create_channel_class()
+            channel = channel_class(address, family, kind)
+        except:
+            raise RuntimeError("Failed to open a comunication channel")
         self._channel = channel
         self._translator = self._prepare_default_translator()
         self._max_transmission_length = 1_000_000
@@ -88,21 +96,6 @@ class Workspace:
         cast(Symbol, self._translator.decode(self._channel.send(code)))
 
     #--------------------------------------------------------------------------
-    # Open a communication channel
-    #--------------------------------------------------------------------------
-    @classmethod
-    def open(cls, 
-             address = ('127.0.0.1', 52425), 
-             family = AF_INET,
-             kind = SOCK_STREAM) -> 'Workspace':
-        try:
-            channel_class = create_channel_class()
-            channel = channel_class(address, family, kind)
-        except:
-            raise RuntimeError("Failed to open a comunication channel")
-        return Workspace(channel)
-
-    #--------------------------------------------------------------------------
     # Close the communication channel
     #--------------------------------------------------------------------------
     def close(self) -> None:
@@ -110,6 +103,7 @@ class Workspace:
             self._channel.close()
         except:  # noqa
             raise RuntimeError("Failed to close the comunication channel")
+
 
     #--------------------------------------------------------------------------
     # Get maximum transmission length
