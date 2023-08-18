@@ -1,7 +1,7 @@
 # Python-Skill Bridge
 
 
-Worsened version of skill bridge to work with the setup I have available. I also removed a lot of features so it is easier to tune skillbridge to different requirements.
+Worsened version of skill bridge that works with the setup I have available. I also removed a lot of features so it is easier to tune skillbridge to different requirements.
 
 Modificiations include:
 
