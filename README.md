@@ -5,7 +5,7 @@ Worsened version of skill bridge that works with the setup I have available. I a
 
 Modificiations include:
 
-1) Server runs on python-2.7 (I have a old setup running on virtualbox).
+1) Server runs on python-2.7 (I have an old setup running on virtualbox).
 2) Comunications use the AF_INET socket trough address 127.0.0.1 and port 52425 by default, but it can be changed.
 3) Client on python3 as (In my case, the client is running on the host machine).
 4) No cammel to snake translations. What you write is what you got. 
