@@ -1,14 +1,14 @@
 # Python-Skill Bridge
 
 
-Worsened version of skill bridge to work with the setup I have available. I also removed a lot of features so it is easier to tune skillbridge to different requirements.
+Worsened version of skill bridge that works with the setup I have available. I also removed a lot of features so it is easier to tune skillbridge to different requirements.
 
 Modificiations include:
 
-1) Server runs on python-2.7 (I have a old setup running on virtualbox).
+1) Server runs on python-2.7 (I have an old setup running on virtualbox).
 2) Comunications use the AF_INET socket trough address 127.0.0.1 and port 52425 by default, but it can be changed.
-3) Client on python3 as (In my case, the client is running on the host machine).
-4) No cammel to snake translations. What you write is what you got. 
+3) Client runs on python3 (In my case, the client is running on the host machine).
+4) No cammel to snake translations. What you write is what you get. 
 5) Removed function grouping. All functions can be accessed with the underline attribute (including the ones needed to be registered as user functions in the original code). 
 6) No division between workspaces. Only one workspace is available.
 
