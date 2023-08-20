@@ -3,7 +3,8 @@
 #-------------------------------------------------------------------------------
 import logging
 import socket
-from SocketServer import BaseRequestHandler, TCPServer, UnixStreamServer
+from SocketServer import BaseRequestHandler, ThreadingMixIn, \
+                         TCPServer, UnixStreamServer
 from argparse import ArgumentParser
 from logging import WARNING, basicConfig, getLogger
 from os import getenv
@@ -58,7 +59,7 @@ def read_from_skill(timeout):
 #-------------------------------------------------------------------------------
 # Server class
 #-------------------------------------------------------------------------------
-class Server(TCPServer):
+class Server(TCPServer): #, ThreadingMixIn):
     def server_bind(self):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(self.server_address)
@@ -67,7 +68,7 @@ class Server(TCPServer):
 #-------------------------------------------------------------------------------
 # Server class
 #-------------------------------------------------------------------------------
-class ServerLocal(UnixStreamServer):
+class ServerLocal(UnixStreamServer): #, ThreadingMixIn):
     def server_bind(self):
         self.socket.bind(self.server_address)
 

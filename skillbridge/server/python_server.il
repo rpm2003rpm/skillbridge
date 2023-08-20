@@ -1,6 +1,6 @@
 ; Load the python server script using Inter-Process Comunication
 ;------------------------------------------------------------------------------
-let((_filename _baseName _logDirectory _unbound)
+let((_baseName _logDirectory _unbound)
 
 
     ; filename, excutable name and log directory 
