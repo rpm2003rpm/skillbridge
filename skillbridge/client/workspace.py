@@ -21,7 +21,7 @@ class Workspace:
     # Constructor
     #--------------------------------------------------------------------------
     def __init__(self, 
-                 address = ('127.0.0.1', 52425), 
+                 address = ('192.168.56.101', 52425), 
                  family = AF_INET,
                  kind = SOCK_STREAM):
         try:
@@ -100,6 +100,10 @@ class Workspace:
     #--------------------------------------------------------------------------
     def close(self) -> None:
         try:
+            variablesToClean = self._.listVariables("__py.*")
+            for var in variablesToClean:
+                self._channel.send(f"{var.value} = `unbound")
+            self._.gc()
             self._channel.close()
         except:  # noqa
             raise RuntimeError("Failed to close the comunication channel")
