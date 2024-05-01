@@ -101,8 +101,11 @@ class Workspace:
     def close(self) -> None:
         try:
             variablesToClean = self._.listVariables("__py.*")
-            for var in variablesToClean:
-                self._channel.send(f"{var.value} = `unbound")
+            try:
+                for var in variablesToClean:
+                    self._channel.send(f"{var.value} = `unbound")
+            except:
+                pass
             self._.gc()
             self._channel.close()
         except:  # noqa
