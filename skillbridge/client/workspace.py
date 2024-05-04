@@ -100,8 +100,8 @@ class Workspace:
     #--------------------------------------------------------------------------
     def close(self) -> None:
         try:
-            variablesToClean = self._.listVariables("__py.*")
             try:
+                variablesToClean = self._.listVariables("__py.*")
                 for var in variablesToClean:
                     self._channel.send(f"{var.value} = `unbound")
             except:

@@ -1,0 +1,19 @@
+[build-system]
+requires=["setuptools >= 58.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "skillbridge"
+version = "1.2"
+description = "A seamless python to Cadence Virtuoso Skill interface"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [ 'pytest', 'regex', 'selection', 'sockets', 'dataclasses', 'typing']
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/rpm2003rpm/skillbridge"
