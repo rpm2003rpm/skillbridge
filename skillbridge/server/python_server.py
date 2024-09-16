@@ -3,13 +3,12 @@
 #-------------------------------------------------------------------------------
 import logging
 import socket
-from SocketServer import BaseRequestHandler, ThreadingMixIn, \
-                         TCPServer, UnixStreamServer
-from argparse import ArgumentParser
-from logging import WARNING, basicConfig, getLogger
-from os import getenv
-from select import select
-from sys import argv, stderr, stdin, stdout
+from SocketServer import BaseRequestHandler, ThreadingMixIn, TCPServer, UnixStreamServer
+from argparse     import ArgumentParser
+from logging      import WARNING, basicConfig, getLogger
+from os           import getenv
+from select       import select
+from sys          import argv, stderr, stdin, stdout
 import re
 import os
 
@@ -20,10 +19,9 @@ import os
 LOG_PATH = str(getenv("SKILLBRIDGE_LOG_DIRECTORY"))
 if not LOG_PATH:
     LOG_PATH = '.'
-LOG_FILE = '{0}/skillbridge_server.log'.format(LOG_PATH)
-LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
+LOG_FILE        = '{0}/skillbridge_server.log'.format(LOG_PATH)
+LOG_FORMAT      = '%(asctime)s %(levelname)s %(message)s'
 LOG_DATE_FORMAT = '%d.%m.%Y %H:%M:%S'
-LOG_LEVEL = WARNING
 basicConfig(filename=LOG_FILE, format=LOG_FORMAT, datefmt=LOG_DATE_FORMAT)
 logger = getLogger("python-server")
 
@@ -106,7 +104,7 @@ class Handler(BaseRequestHandler):
 
         logger.debug("received {0} bytes".format(len(command)))
 
-        if command.startswith(b'close'):
+        if command.startswith(b'$close_remote_connection$'):
             logger.debug("client {0} disconnected".format(self.client_address))
             return False
         logger.debug("got data {0}".format(command[:1000].decode()))

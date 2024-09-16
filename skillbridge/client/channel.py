@@ -172,7 +172,7 @@ class TcpChannel(Channel):
     #--------------------------------------------------------------------------
     def close(self) -> None:
         if self.connected:
-            self._send_only('close')
+            self._send_only('$close_remote_connection$')
             self.socket.close()
             self.connected = False
 

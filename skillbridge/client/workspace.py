@@ -3,13 +3,11 @@
 #------------------------------------------------------------------------------
 from functools import partial
 from typing import Any, Iterable, cast
-from .channel import create_channel_class, Channel
-from .functions import FunGroup, RemoteFunction
-from .globals import DirectGlobals, Globals
-from .hints import Symbol
-from .objects import RemoteObject, RemoteTable, RemoteVector
-from .translator import DefaultTranslator, Translator
 from socket import AF_INET, SOCK_STREAM
+from .channel import create_channel_class, Channel
+from .remote import Functions, Variables, RemoteObject, RemoteTable, RemoteVector
+from .hints import Symbol, SkillCode, Skill, Union
+from .translator import DefaultTranslator, Translator
 
 
 #------------------------------------------------------------------------------
@@ -21,7 +19,7 @@ class Workspace:
     # Constructor
     #--------------------------------------------------------------------------
     def __init__(self, 
-                 address = ('192.168.56.101', 52425), 
+                 address = ('127.0.0.1', 52425), 
                  family = AF_INET,
                  kind = SOCK_STREAM):
         try:
@@ -32,9 +30,10 @@ class Workspace:
         self._channel = channel
         self._translator = self._prepare_default_translator()
         self._max_transmission_length = 1_000_000
-        self.__ = DirectGlobals(channel, self._translator)
-        self._  = FunGroup(channel, self._translator)
-
+        self.variables = Variables(channel, self._translator)
+        self.functions = Functions(channel, self._translator)
+        self._  = self.functions
+        self.__ = self.variables
 
     #--------------------------------------------------------------------------
     # Prepare the translator
@@ -51,32 +50,10 @@ class Workspace:
         return translator
 
     #--------------------------------------------------------------------------
-    # Make table
+    # Execute raw code
     #--------------------------------------------------------------------------
-    def make_table(self, 
-                   name: str, 
-                   default: Any = Symbol('unbound')) -> RemoteTable:
-        return self['makeTable'](name, default)  # type: ignore
-
-    #--------------------------------------------------------------------------
-    # Make vector
-    #--------------------------------------------------------------------------
-    def make_vector(self, 
-                    length: int, 
-                    default: Any = Symbol('unbound')) -> RemoteVector:
-        return self['makeVector'](length, default)  # type: ignore
-
-    #--------------------------------------------------------------------------
-    # Globals
-    #--------------------------------------------------------------------------
-    def globals(self, prefix: str) -> Globals:
-        return Globals(self._channel, self._translator, prefix)
- 
-    #--------------------------------------------------------------------------
-    # Return item
-    #--------------------------------------------------------------------------
-    def __getitem__(self, item: str) -> RemoteFunction:
-        return RemoteFunction(self._channel, item, self._translator)
+    def runSkillCode(self, code : Union[str, SkillCode]) -> Skill:
+        return self._translator.decode(self._channel.send(code))
 
     #--------------------------------------------------------------------------
     # Flush channel
@@ -85,32 +62,21 @@ class Workspace:
         self._channel.flush()
 
     #--------------------------------------------------------------------------
-    # Define a function
-    #--------------------------------------------------------------------------
-    def define(self, name: str, args: Iterable[str], code: str) -> None:
-        code = code.replace('\n', ' ')
-        skill_name = name
-        skill_name = skill_name[0].upper() + skill_name[1:]
-        arg_list = ' '.join(arg for arg in args)
-        code = f'defun(user{skill_name} ({arg_list}) {code})'
-        cast(Symbol, self._translator.decode(self._channel.send(code)))
-
-    #--------------------------------------------------------------------------
     # Close the communication channel
     #--------------------------------------------------------------------------
     def close(self) -> None:
         try:
-            try:
-                variablesToClean = self._.listVariables("__py.*")
-                for var in variablesToClean:
-                    self._channel.send(f"{var.value} = `unbound")
-            except:
-                pass
-            self._.gc()
+            #clean up
+            code = 'foreach(elem listVariables("^__py_openfile.*") if(portp(elem) then close(elem))) ' +\
+                   'foreach(elem listVariables("^__py_.*") set(elem `unbound)) t'
+            self._channel.send(code)
+        except:
+            pass
+        try:
+            self.functions.gc()
             self._channel.close()
         except:  # noqa
             raise RuntimeError("Failed to close the comunication channel")
-
 
     #--------------------------------------------------------------------------
     # Get maximum transmission length

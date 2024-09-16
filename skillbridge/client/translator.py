@@ -3,8 +3,8 @@
 #------------------------------------------------------------------------------
 from json import dumps, loads
 from re import findall, sub
-from typing import Any, Callable, Dict, Iterable, List, \
-                   Match, NoReturn, Optional, Union, cast
+from typing import Any, Callable, Dict, Iterable, List, NoReturn, Optional,\
+                   Union, cast
 from warnings import warn_explicit
 from .hints import Skill, SkillCode, Symbol
 
@@ -29,7 +29,6 @@ def _raise_error(message: str) -> NoReturn:
 def _show_warning(message: str, result: Any) -> Any:
     for i, line in enumerate(message.splitlines(keepends=False)):
         warn_explicit(line.lstrip("*WARNING*"), UserWarning, "Skill response", i)
-
     return result
 
 
@@ -47,7 +46,7 @@ _STATIC_EVAL_CONTEXT = {
 # Evaluate a string containing python code
 #------------------------------------------------------------------------------
 def _skill_value_to_python(string: str, 
-                           eval_context: Optional[Dict[str, Any]] = None) -> Skill:
+                     eval_context: Optional[Dict[str, Any]] = None) -> Skill:
     return eval(string, eval_context or _STATIC_EVAL_CONTEXT)  # type: ignore
 
 
@@ -55,19 +54,14 @@ def _skill_value_to_python(string: str,
 # Convert a python expression to skill
 #------------------------------------------------------------------------------
 def python_value_to_skill(value: Skill) -> SkillCode:
+
     try:
         return value.__repr_skill__()  # type: ignore
     except AttributeError:
         pass
-    def __repr_skill__(self) -> SkillCode:
-        pass
-    
+
     if isinstance(value, Symbol):
-        value = value.value
-        if isinstance(value, str):
-            return SkillCode(f"'{value}")
-        else: 
-            return SkillCode(f"'{python_value_to_skill(value)}")
+        return SkillCode(f"'{python_value_to_skill(value.value)}")
     
     if isinstance(value, dict):
         items = ' '.join(f"'{key} {python_value_to_skill(value)}" \
@@ -96,7 +90,7 @@ def python_value_to_skill(value: Skill) -> SkillCode:
 
 
 #------------------------------------------------------------------------------
-# ????
+# build skill path
 #------------------------------------------------------------------------------
 def build_skill_path(components: Iterable[Union[str, int]]) -> SkillCode:
     it = iter(components)
@@ -107,22 +101,6 @@ def build_skill_path(components: Iterable[Union[str, int]]) -> SkillCode:
             path = f'(nth {component} {path})'
         else:
             path = f'{path}->{component}'
-
-    return SkillCode(path)
-
-
-#------------------------------------------------------------------------------
-# ????
-#------------------------------------------------------------------------------
-def build_python_path(components: Iterable[Union[str, int]]) -> SkillCode:
-    it = iter(components)
-    path = str(next(it))
-
-    for component in it:
-        if isinstance(component, int):
-            path = f'{path}[{component}]'
-        else:
-            path = f'{path}.{component}'
 
     return SkillCode(path)
 
@@ -165,7 +143,7 @@ class Translator:
     @staticmethod
     def decode_dir(code: str) -> List[str]:
         attributes = _skill_value_to_python(code) or ()
-        return [attr for attr in cast(List[str], attributes)]
+        return [str(attr) for attr in cast(List[str], attributes)]
 
     #--------------------------------------------------------------------------
     # Decode dir call
