@@ -241,7 +241,7 @@ let((_baseName _logDirectory _unbound) ;Local variables
     defun(pyStartServer (@key (address lsprintf("%s,%s" "0.0.0.0" _defPort)) 
                               (logLevel "INFO") 
                               (timeout nil) 
-                              (python "python"))
+                              (python "LD_LIBRARY_PATH=/lib python"))
         ; Server is already running
         ;------------------------------------------------------------------------------------------
         if(pyStartServer.ipc then

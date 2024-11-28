@@ -16,9 +16,10 @@ import os
 #-------------------------------------------------------------------------------
 # Logger instance
 #-------------------------------------------------------------------------------
-LOG_PATH = str(getenv("SKILLBRIDGE_LOG_DIRECTORY"))
+LOG_PATH = getenv("SKILLBRIDGE_LOG_DIRECTORY")
 if not LOG_PATH:
     LOG_PATH = '.'
+LOG_PATH = str(LOG_PATH)
 LOG_FILE        = '{0}/skillbridge_server.log'.format(LOG_PATH)
 LOG_FORMAT      = '%(asctime)s %(levelname)s %(message)s'
 LOG_DATE_FORMAT = '%d.%m.%Y %H:%M:%S'

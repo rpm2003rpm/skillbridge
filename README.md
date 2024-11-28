@@ -59,3 +59,7 @@ Examples using this version of skillbridge:
     plt.grid()
     plt.show()               
 ```
+
+3) For io files:
+import socket
+ws = Workspace("path_to_file", socket.AF_UNIX)
